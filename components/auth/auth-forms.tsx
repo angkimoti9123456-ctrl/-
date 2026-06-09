@@ -61,6 +61,9 @@ export function AuthForms() {
   const [loginError, setLoginError] = useState("")
   const [loginLoading, setLoginLoading] = useState(false)
 
+  const [signupLoading, setSignupLoading] = useState(false)
+  const [signupError, setSignupError] = useState("")
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoginError("")
@@ -93,10 +96,60 @@ export function AuthForms() {
     }
   }
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!isEmailVerified) return
-    router.push("/board")
+    setSignupError("")
+
+    if (!isEmailVerified) {
+      setSignupError("이메일 인증을 완료해주세요.")
+      return
+    }
+
+    if (!studentId || !realName || !signupPassword) {
+      setSignupError("학번, 이름, 비밀번호를 모두 입력해주세요.")
+      return
+    }
+
+    if (signupPassword !== confirmPassword) {
+      setSignupError("비밀번호가 일치하지 않습니다.")
+      return
+    }
+
+    if (signupPassword.length < 8) {
+      setSignupError("비밀번호는 8자 이상이어야 합니다.")
+      return
+    }
+
+    setSignupLoading(true)
+
+    try {
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: studentId.trim(),
+          password: signupPassword,
+          name: realName.trim(),
+          nickname: nickname.trim(),
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok || !data.ok) {
+        throw new Error(data.message || "회원가입 실패")
+      }
+
+      router.push("/board")
+    } catch (error) {
+      setSignupError(
+        error instanceof Error ? error.message : "회원가입 중 오류가 발생했습니다."
+      )
+    } finally {
+      setSignupLoading(false)
+    }
   }
 
   // Email validation helper
@@ -820,13 +873,20 @@ export function AuthForms() {
                     </div>
                   </div>
 
-                  <Button 
-                    type="submit" 
-                    className="w-full h-11 text-base font-medium"
-                    disabled={!isEmailVerified}
-                  >
-                    {isEmailVerified ? "회원가입 완료" : "이메일 인증을 완료해주세요"}
-                  </Button>
+                      <Button
+                        onClick={handleSignup}
+                        disabled={!isEmailVerified || signupLoading}
+                        className="w-full h-11 mt-2"
+                      >
+                        {signupLoading
+                          ? "가입 중..."
+                          : isEmailVerified
+                            ? "회원가입 완료"
+                            : "이메일 인증을 완료해주세요"}
+                      </Button>
+                      {signupError && (
+                        <p className="mt-2 text-sm text-red-500">{signupError}</p>
+                      )}
                 </form>
 
                 <p className="text-center text-sm text-muted-foreground mt-6">
