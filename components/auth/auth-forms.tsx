@@ -46,6 +46,9 @@ export function AuthForms() {
   const [verificationError, setVerificationError] = useState("")
   const [verificationTimer, setVerificationTimer] = useState(0)
   const [showVerificationToast, setShowVerificationToast] = useState(false)
+  
+  const [sendingVerification, setSendingVerification] = useState(false)
+  const [verifyingCode, setVerifyingCode] = useState(false)
 
   // Mock registered emails for verification
   const REGISTERED_EMAILS = [
@@ -123,29 +126,81 @@ export function AuthForms() {
   }
 
   // Send verification code
-  const handleSendVerificationCode = () => {
+  const handleSendVerificationCode = async () => {
     if (!isValidEmailFormat(schoolEmail)) return
-    
-    setVerificationCodeSent(true)
-    setVerificationTimer(180) // 3 minutes
-    setVerificationCode("")
+    if (isEmailVerified) return
+
     setVerificationError("")
-    setIsEmailVerified(false)
-    
-    // Show toast
-    setShowVerificationToast(true)
-    setTimeout(() => setShowVerificationToast(false), 3000)
+    setSendingVerification(true)
+
+    try {
+      const res = await fetch("/api/auth/email/send-code", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: schoolEmail.trim(),
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok || !data.ok) {
+        throw new Error(data.message || "인증코드 전송 실패")
+      }
+
+      setVerificationCodeSent(true)
+      setVerificationTimer(180)
+      setVerificationCode("")
+      setIsEmailVerified(false)
+
+      setShowVerificationToast(true)
+      setTimeout(() => setShowVerificationToast(false), 3000)
+    } catch (error) {
+      setVerificationError(
+        error instanceof Error ? error.message : "인증코드 전송 중 오류가 발생했습니다."
+      )
+    } finally {
+      setSendingVerification(false)
+    }
   }
 
   // Verify code
-  const handleVerifyCode = () => {
-    // Mock: accept "123456" or any 6-digit code for demo
-    if (verificationCode === "123456") {
+  const handleVerifyCode = async () => {
+    if (verificationCode.length !== 6) return
+    if (verificationTimer === 0) return
+
+    setVerificationError("")
+    setVerifyingCode(true)
+
+    try {
+      const res = await fetch("/api/auth/email/verify-code", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: schoolEmail.trim(),
+          code: verificationCode.trim(),
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok || !data.ok) {
+        throw new Error(data.message || "인증 실패")
+      }
+
       setIsEmailVerified(true)
       setVerificationError("")
       setVerificationTimer(0)
-    } else {
-      setVerificationError("인증코드가 올바르지 않거나 시간이 만료되었습니다.")
+    } catch (error) {
+      setVerificationError(
+        error instanceof Error ? error.message : "인증코드 확인 중 오류가 발생했습니다."
+      )
+    } finally {
+      setVerifyingCode(false)
     }
   }
 
@@ -622,16 +677,16 @@ export function AuthForms() {
                           className="pl-10 h-11 bg-card border-input"
                         />
                       </div>
-                      <Button
-                        type="button"
-                        variant={verificationCodeSent && !isEmailVerified ? "outline" : "default"}
-                        onClick={handleSendVerificationCode}
-                        disabled={!isValidEmailFormat(schoolEmail) || isEmailVerified}
-                        className="h-11 px-4 shrink-0"
-                      >
-                        <Send className="w-4 h-4 mr-2" />
-                        {verificationCodeSent ? "재전송" : "인증코드 전송"}
-                      </Button>
+                          <Button
+                            type="button"
+                            variant={verificationCodeSent && !isEmailVerified ? "outline" : "default"}
+                            onClick={handleSendVerificationCode}
+                            disabled={!isValidEmailFormat(schoolEmail) || isEmailVerified || sendingVerification}
+                            className="h-11 px-4 shrink-0"
+                          >
+                            <Send className="w-4 h-4 mr-2" />
+                            {sendingVerification ? "전송 중..." : verificationCodeSent ? "재전송" : "인증코드 전송"}
+                          </Button>
                     </div>
                     
                     {/* Timer display */}
@@ -663,14 +718,14 @@ export function AuthForms() {
                             }}
                             className="h-11 bg-card border-input font-mono tracking-widest text-center"
                           />
-                          <Button
-                            type="button"
-                            onClick={handleVerifyCode}
-                            disabled={verificationCode.length !== 6 || verificationTimer === 0}
-                            className="h-11 px-6"
-                          >
-                            확인
-                          </Button>
+                              <Button
+                                type="button"
+                                onClick={handleVerifyCode}
+                                disabled={verificationCode.length !== 6 || verificationTimer === 0 || verifyingCode}
+                                className="h-11 px-6"
+                              >
+                                {verifyingCode ? "확인 중..." : "확인"}
+                              </Button>
                         </div>
                       </div>
                     )}
