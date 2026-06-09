@@ -500,25 +500,41 @@ export function CommunityBoard() {
   const [sanctionTargetReport, setSanctionTargetReport] = useState<Report | null>(null)
   
   // Mock logged in user
-  const [currentUser, setCurrentUser] = useState<UserProfile>(() => {
-    const admin = ADMIN_ACCOUNTS[0]
-    return {
-      id: admin.id,
-      nickname: admin.nickname,
-      isAdmin: true,
-      realName: "김관리",
-      studentId: "ADMIN",
-      email: "admin@school.hs.kr",
-      lastNicknameChange: "2026-05-15",
-      status: "ACTIVE"
-    }
+  const [currentUser, setCurrentUser] = useState<UserProfile>({
+    id: "",
+    nickname: "",
+    isAdmin: false,
+    realName: "",
+    studentId: "",
+    email: "",
+    status: "ACTIVE",
   })
+
+  const [userLoaded, setUserLoaded] = useState(false)
 
   // Toast helper
   const showToast = (message: string, type: "success" | "error" = "success") => {
     setToast({ message, type })
     setTimeout(() => setToast(null), 3000)
   }
+  
+  useEffect(() => {
+    const raw = sessionStorage.getItem("currentUser")
+
+    if (!raw) {
+      router.push("/")
+      return
+    }
+
+    try {
+      const parsed = JSON.parse(raw)
+      setCurrentUser(parsed)
+      setUserLoaded(true)
+    } catch {
+      sessionStorage.removeItem("currentUser")
+      router.push("/")
+    }
+  }, [router])
 
   //서버에서 게시글 불러오는 함수 추가
   const loadPosts = async () => {
@@ -991,33 +1007,58 @@ export function CommunityBoard() {
     setProfileModalOpen(true)
   }
   
-  const handleSaveNickname = () => {
+  const handleSaveNickname = async () => {
     setNicknameError("")
     setNicknameSuccess("")
-    
+
     if (!newNickname.trim()) {
       setNicknameError("닉네임을 입력해주세요.")
       return
     }
-    
+
     if (newNickname.length < 2 || newNickname.length > 20) {
       setNicknameError("닉네임은 2자 이상 20자 이하로 입력해주세요.")
       return
     }
-    
+
     if (!canChangeNickname()) {
       const daysLeft = getDaysUntilNicknameChange()
       setNicknameError(`닉네임 변경은 ${daysLeft}일 후에 가능합니다.`)
       return
     }
-    
-    const today = new Date().toISOString().split("T")[0]
-    setCurrentUser(prev => ({
-      ...prev,
-      nickname: newNickname,
-      lastNicknameChange: today
-    }))
-    setNicknameSuccess("닉네임이 성공적으로 변경되었습니다. (다음 변경 가능일: 7일 후)")
+
+    try {
+      const res = await fetch("/api/user/nickname", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_id: currentUser.id,
+          nickname: newNickname.trim(),
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok || !data.ok) {
+        throw new Error(data.message || "닉네임 변경 실패")
+      }
+
+      const updatedUser = {
+        ...currentUser,
+        nickname: newNickname.trim(),
+        lastNicknameChange: new Date().toISOString().split("T")[0],
+      }
+
+      setCurrentUser(updatedUser)
+      sessionStorage.setItem("currentUser", JSON.stringify(updatedUser))
+      setNicknameSuccess("닉네임이 성공적으로 변경되었습니다. (다음 변경 가능일: 7일 후)")
+    } catch (error) {
+      setNicknameError(
+        error instanceof Error ? error.message : "닉네임 변경 중 오류가 발생했습니다."
+      )
+    }
   }
   
   const handleLogout = () => {
@@ -1025,6 +1066,14 @@ export function CommunityBoard() {
     setTimeout(() => {
       router.push("/")
     }, 1500)
+  }
+
+  if (!userLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        불러오는 중...
+      </div>
+    )
   }
 
   return (

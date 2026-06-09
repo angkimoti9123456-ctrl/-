@@ -55,9 +55,39 @@ export function AuthForms() {
     "2025001@school.hs.kr",
   ]
 
-  const handleLogin = (e: React.FormEvent) => {
+  const [loginError, setLoginError] = useState("")
+  const [loginLoading, setLoginLoading] = useState(false)
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    router.push("/board")
+    setLoginError("")
+    setLoginLoading(true)
+
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          identifier: loginEmail,
+          password: loginPassword,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok || !data.ok) {
+        throw new Error(data.message || "로그인 실패")
+      }
+
+      sessionStorage.setItem("currentUser", JSON.stringify(data.user))
+      router.push("/board")
+    } catch (error) {
+      setLoginError(error instanceof Error ? error.message : "로그인 중 오류가 발생했습니다.")
+    } finally {
+      setLoginLoading(false)
+    }
   }
 
   const handleSignup = (e: React.FormEvent) => {
@@ -497,9 +527,12 @@ export function AuthForms() {
                     </button>
                   </div>
 
-                  <Button type="submit" className="w-full h-11 text-base font-medium">
-                    로그인
-                  </Button>
+                      <Button type="submit" className="w-full h-11 text-base font-medium" disabled={loginLoading}>
+                        {loginLoading ? "로그인 중..." : "로그인"}
+                      </Button>
+                      {loginError && (
+                        <p className="text-sm text-red-600 mt-2">{loginError}</p>
+                      )}
                 </form>
 
                 <p className="text-center text-sm text-muted-foreground mt-6">
