@@ -94,6 +94,7 @@ const CATEGORIES = [
 interface Comment {
   id: number
   author: string
+  authorId?: string
   content: string
   date: string
   time: string
@@ -104,6 +105,7 @@ interface Post {
   title: string
   category: string
   author: string
+  authorId?: string
   date: string
   time: string
   content: string
@@ -377,6 +379,7 @@ type ApiPost = {
   post_id: string
   type: string
   author_id: string
+  author_nickname?: string
   title: string
   content: string
   view_count: number
@@ -388,6 +391,7 @@ type ApiComment = {
   comment_id: string
   post_id: string
   author_id: string
+  author_nickname?: string
   content: string
   created_at: string
 }
@@ -405,9 +409,11 @@ type ApiReport = {
 
 const mapApiCommentToComment = (comment: ApiComment): Comment => {
   const createdAt = comment.created_at || ""
+
   return {
     id: Number(comment.comment_id.match(/\d+/)?.[0] ?? Date.now()),
-    author: comment.author_id,
+    author: comment.author_nickname || comment.author_id,
+    authorId: comment.author_id,
     content: comment.content,
     date: createdAt.slice(0, 10),
     time: createdAt.slice(11, 16),
@@ -416,18 +422,16 @@ const mapApiCommentToComment = (comment: ApiComment): Comment => {
 
 const mapApiPostToPost = (post: ApiPost): Post => {
   const numericId = Number(post.post_id.match(/\d+/)?.[0] ?? Date.now())
-
   const createdDate = post.created_at || ""
-  const date = createdDate.slice(0, 10)
-  const time = createdDate.slice(11, 16)
 
   return {
     id: numericId,
     title: post.title,
-    category: post.type.toLowerCase(), // FREE -> free
-    author: post.author_id,            // 일단 학번/ID 표시
-    date,
-    time,
+    category: post.type.toLowerCase(),
+    author: post.author_nickname || post.author_id,
+    authorId: post.author_id,
+    date: createdDate.slice(0, 10),
+    time: createdDate.slice(11, 16),
     content: post.content,
     tags: [],
     hasReports: false,

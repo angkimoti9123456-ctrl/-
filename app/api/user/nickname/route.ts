@@ -69,6 +69,19 @@ export async function PATCH(req: Request) {
             );
         }
 
+        const duplicate = dataRows.find((row, idx) => {
+            const rowUserId = String(row[userIdIndex] ?? "").trim();
+            const rowNickname = String(row[nicknameIndex] ?? "").trim();
+            return idx !== targetIndex && rowUserId !== userId && rowNickname === nickname;
+        });
+
+        if (duplicate) {
+            return NextResponse.json(
+                { ok: false, message: "이미 사용 중인 닉네임입니다." },
+                { status: 409 }
+            );
+        }
+
         const sheetRowNumber = targetIndex + 2;
         const targetRow = [...(dataRows[targetIndex] ?? [])];
 

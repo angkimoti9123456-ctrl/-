@@ -24,6 +24,37 @@ function extractNumber(value: string) {
   return Number(value.match(/\d+/)?.[0] ?? 0);
 }
 
+async function getNicknameMap() {
+  const userRes = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: "User!A1:Z",
+  });
+
+  const rows = userRes.data.values ?? [];
+  if (rows.length < 2) return new Map<string, string>();
+
+  const headers = rows[0].map((h) => String(h).trim());
+  const userIdIndex = headers.indexOf("user_id");
+  const nicknameIndex = headers.indexOf("nickname");
+  const nameIndex = headers.indexOf("name");
+
+  const map = new Map<string, string>();
+
+  for (const row of rows.slice(1)) {
+    const userId = String(row[userIdIndex] ?? "").trim();
+    if (!userId) continue;
+
+    const nickname =
+      String(row[nicknameIndex] ?? "").trim() ||
+      String(row[nameIndex] ?? "").trim() ||
+      userId;
+
+    map.set(userId, nickname);
+  }
+
+  return map;
+}
+
 export async function GET() {
   try {
     const response = await sheets.spreadsheets.values.get({
@@ -33,16 +64,23 @@ export async function GET() {
 
     const rows = response.data.values ?? [];
 
-    const posts = rows.map((row) => ({
-      post_id: row[0] ?? "",
-      type: row[1] ?? "",
-      author_id: row[2] ?? "",
-      title: row[3] ?? "",
-      content: row[4] ?? "",
-      view_count: Number(row[5] ?? 0),
-      due_date: row[6] ?? "",
-      created_at: row[7] ?? "",
-    }));
+    const nicknameMap = await getNicknameMap();
+
+    const posts = rows.map((row) => {
+      const authorId = String(row[2] ?? "").trim();
+
+      return {
+        post_id: row[0] ?? "",
+        type: row[1] ?? "",
+        author_id: authorId,
+        author_nickname: nicknameMap.get(authorId) ?? authorId,
+        title: row[3] ?? "",
+        content: row[4] ?? "",
+        view_count: Number(row[5] ?? 0),
+        due_date: row[6] ?? "",
+        created_at: row[7] ?? "",
+      };
+    });
 
     return NextResponse.json({ ok: true, posts });
   } catch (error) {

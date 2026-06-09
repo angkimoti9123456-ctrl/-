@@ -23,6 +23,37 @@ function extractNumber(value: string) {
     return Number(value.match(/\d+/)?.[0] ?? 0);
 }
 
+async function getNicknameMap() {
+    const userRes = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range: "User!A1:Z",
+    });
+
+    const rows = userRes.data.values ?? [];
+    if (rows.length < 2) return new Map<string, string>();
+
+    const headers = rows[0].map((h) => String(h).trim());
+    const userIdIndex = headers.indexOf("user_id");
+    const nicknameIndex = headers.indexOf("nickname");
+    const nameIndex = headers.indexOf("name");
+
+    const map = new Map<string, string>();
+
+    for (const row of rows.slice(1)) {
+        const userId = String(row[userIdIndex] ?? "").trim();
+        if (!userId) continue;
+
+        const nickname =
+            String(row[nicknameIndex] ?? "").trim() ||
+            String(row[nameIndex] ?? "").trim() ||
+            userId;
+
+        map.set(userId, nickname);
+    }
+
+    return map;
+}
+
 export async function GET(req: Request) {
     try {
         const url = new URL(req.url);
