@@ -98,7 +98,7 @@ export function AuthForms() {
 
   // Email validation helper
   const isValidEmailFormat = useCallback((email: string) => {
-    return /^[0-9]{7}@school\.hs\.kr$/.test(email)
+    return /^[^\s@]+@unam\.hs\.kr$/.test(email.trim())
   }, [])
 
   // Timer effect for countdown
