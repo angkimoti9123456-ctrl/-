@@ -96,6 +96,8 @@ export function AuthForms() {
     }
   }
 
+  // components/auth/auth-forms.tsx
+  // 기존 handleSignup 전체를 아래로 교체
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setSignupError("")
@@ -115,40 +117,46 @@ export function AuthForms() {
       return
     }
 
-    if (signupPassword.length < 8) {
-      setSignupError("비밀번호는 8자 이상이어야 합니다.")
-      return
-    }
-
-    setSignupLoading(true)
-
     try {
-      const res = await fetch("/api/auth/signup", {
+      const signupRes = await fetch("/api/auth/signup", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           user_id: studentId.trim(),
           password: signupPassword,
           name: realName.trim(),
           nickname: nickname.trim(),
+          email: schoolEmail.trim(),
         }),
       })
 
-      const data = await res.json()
+      const signupData = await signupRes.json()
 
-      if (!res.ok || !data.ok) {
-        throw new Error(data.message || "회원가입 실패")
+      if (!signupRes.ok || !signupData.ok) {
+        throw new Error(signupData.message || "회원가입 실패")
       }
 
+      const loginRes = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          identifier: studentId.trim(),
+          password: signupPassword,
+        }),
+      })
+
+      const loginData = await loginRes.json()
+
+      if (!loginRes.ok || !loginData.ok) {
+        throw new Error(loginData.message || "자동 로그인 실패")
+      }
+
+      sessionStorage.setItem("currentUser", JSON.stringify(loginData.user))
       router.push("/board")
     } catch (error) {
       setSignupError(
         error instanceof Error ? error.message : "회원가입 중 오류가 발생했습니다."
       )
-    } finally {
-      setSignupLoading(false)
     }
   }
 

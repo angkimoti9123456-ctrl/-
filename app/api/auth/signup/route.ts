@@ -95,6 +95,7 @@ export async function POST(req: NextRequest) {
         const password = String(body.password ?? "").trim()
         const name = String(body.name ?? "").trim()
         const nickname = String(body.nickname ?? "").trim()
+        const email = String(body.email ?? "").trim()
 
         if (!user_id || !password || !name) {
             return NextResponse.json(
@@ -129,9 +130,10 @@ export async function POST(req: NextRequest) {
             "",
             "",
             nickname,
+            email,
         ]
 
-        await sheetsAppendValues(`${SHEET_NAME}!A:I`, [row], token)
+        await sheetsAppendValues(`${SHEET_NAME}!A:J`, [row], token)
 
         return NextResponse.json({ ok: true })
     } catch (error) {

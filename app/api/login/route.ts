@@ -18,7 +18,7 @@ export async function POST(req: Request) {
 
         const res = await sheets.spreadsheets.values.get({
             spreadsheetId,
-            range: "User!A1:H",
+            range: "User!A1:J",
         });
 
         const rows = res.data.values ?? [];
@@ -61,7 +61,7 @@ export async function POST(req: Request) {
                 isAdmin: String(user.role ?? "").toUpperCase() === "ADMIN",
                 realName: String(user.name ?? ""),
                 studentId: String(user.user_id ?? ""),
-                email: "",
+                email: String(user.email ?? ""),
                 status: String(user.status ?? "ACTIVE"),
                 sanctionUntil: String(user.sanction_until ?? ""),
                 sanctionReason: String(user.sanction_reason ?? ""),
